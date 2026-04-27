@@ -1,4 +1,8 @@
 ﻿{
+
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=ExampleDB;Trusted_Connection=True;"
+  },  
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
     "https": {
