@@ -4,11 +4,13 @@ namespace ProjectManagementAPI.Models
 {
     public class Project
     {
-        public int Id { get; set; }
+        public int id { get; set; }
         public required string name { get; set; }
         public required string description { get; set; }
-        public required DateFormat dateFormat { get; set; }
-        public required Teacher coordinator { get; set; }
-        public List<Student> students { get; set; } = new();
+        public required DateTime date { get; set; }
+
+        public int teacherId { get; set; }
+        public required Teacher teacher { get; set; }
+        public List<Student> students { get;} = new();
     }
 }
