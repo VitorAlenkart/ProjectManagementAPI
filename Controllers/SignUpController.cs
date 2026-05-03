@@ -41,6 +41,7 @@ namespace ProjectManagementAPI.Controllers
         [HttpPost("student")]
         public async Task<ActionResult<Student>> PostStudent(Student student)
         {
+            student.hashedPassword = _passwordService.HashPassword(student.hashedPassword);
             _context.Students.Add(student);
             await _context.SaveChangesAsync();
 
