@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using ProjectManagementAPI.Data;
 using ProjectManagementAPI.Models;
 
+
 namespace ProjectManagementAPI.Controllers
 {
     [Route("api/[controller]")]
@@ -21,7 +22,7 @@ namespace ProjectManagementAPI.Controllers
             _context = context;
         }
 
-        // GET: api/Projects
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Project>>> GetProjects()
         {
@@ -42,8 +43,6 @@ namespace ProjectManagementAPI.Controllers
             return project;
         }
 
-        // PUT: api/Projects/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutProject(int id, Project project)
         {
@@ -73,8 +72,6 @@ namespace ProjectManagementAPI.Controllers
             return NoContent();
         }
 
-        // POST: api/Projects
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Project>> PostProject(Project project)
         {
@@ -84,7 +81,6 @@ namespace ProjectManagementAPI.Controllers
             return CreatedAtAction("GetProject", new { id = project.id }, project);
         }
 
-        // DELETE: api/Projects/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(int id)
         {

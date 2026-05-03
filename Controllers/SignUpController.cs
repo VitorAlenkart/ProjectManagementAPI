@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NuGet.DependencyResolver;
 using ProjectManagementAPI.Data;
 using ProjectManagementAPI.Models;
+using ProjectManagementAPI.Services;
 
 
 namespace ProjectManagementAPI.Controllers
@@ -13,22 +14,24 @@ namespace ProjectManagementAPI.Controllers
     public class SignUpController : ControllerBase
     {
         private readonly ApplicationContext _context;
+        private readonly PasswordService _passwordService;
 
-        public SignUpController(ApplicationContext context)
+        public SignUpController(ApplicationContext context, PasswordService passwordService)
         {
             _context = context;
+            _passwordService = passwordService;
         }
 
         [HttpPost("teacher")]
         public async Task<ActionResult<Teacher>> PostTeacher(Teacher teacher)
         {
+            teacher.hashedPassword = _passwordService.HashPassword(teacher.hashedPassword);
             _context.Teachers.Add(teacher);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetTeacher", new { id = teacher.id }, teacher);
         }
 
-        // GET: api/Teachers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Teacher>>> GetTeacher()
         {
@@ -49,5 +52,6 @@ namespace ProjectManagementAPI.Controllers
         {
             return await _context.Students.ToListAsync();
         }
+
     }
 }

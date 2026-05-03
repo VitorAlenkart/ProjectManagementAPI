@@ -16,7 +16,7 @@ POST {{ProjectManagementAPI_HostAddress}}/api/signup/teacher
 Content-Type: application/json
 
 {
-  "fullName": "Vitor",
+  "fullName": "Vitor Alencar",
    "email": "vitor@example.com",
    "hashedPassword": "hashed_password",
    "occupationArea": "Professor",
