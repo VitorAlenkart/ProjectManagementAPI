@@ -75,10 +75,23 @@ namespace ProjectManagementAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<Project>> PostProject(Project project)
         {
-            _context.Projects.Add(project);
-            await _context.SaveChangesAsync();
+            project.date = DateTime.Now;
+            if (project.teacherId == null && project.name == null && project.description == null)
+            {
+                return BadRequest();
+            }
+            else
+            {
+                var teacher = await _context.Teachers.FindAsync(project.teacherId);
+                if (teacher == null)
+                {
+                    return BadRequest();
+                }
+                _context.Projects.Add(project);
+                await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetProject", new { id = project.id }, project);
+                return CreatedAtAction("GetProject", new { id = project.id }, project);
+            }
         }
 
         [HttpDelete("{id}")]

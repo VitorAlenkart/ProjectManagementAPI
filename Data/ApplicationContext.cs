@@ -10,11 +10,6 @@ namespace ProjectManagementAPI.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Ignore<User>();
-
-            modelBuilder.Entity<Project>()
-                .HasOne(p => p.teacher)              
-                .WithMany(t => t.projects)     
-                .OnDelete(DeleteBehavior.Restrict);
         }
 
         public ApplicationContext(DbContextOptions<ApplicationContext> options)

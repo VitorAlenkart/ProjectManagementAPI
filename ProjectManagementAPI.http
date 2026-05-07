@@ -1,26 +1,78 @@
 @ProjectManagementAPI_HostAddress = https://localhost:7219
 
-POST {{ProjectManagementAPI_HostAddress}}/api/signup/student
+POST {{ProjectManagementAPI_HostAddress}}/api/signup
 Content-Type: application/json
 
 {
-   "fullName": "John",
-   "email": "john.doe@example.com",
+   "fullName": "Vitor A",
+   "email": "vitor@example.com",
+   "hashedPassword": "hashed_password",
+   "occupationArea": "Professor",
+   "formationArea": "SC"
+}
+
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/signup
+Content-Type: application/json
+
+{
+   "fullName": "Vitor A",
+   "email": "vitor@example.com",
    "hashedPassword": "hashed_password",
    "educationalInstitution": "Example University"
 }
 
 ###
 
-POST {{ProjectManagementAPI_HostAddress}}/api/signup/teacher
+POST {{ProjectManagementAPI_HostAddress}}/api/signup
 Content-Type: application/json
 
 {
-  "fullName": "Vitor Alencar",
    "email": "vitor@example.com",
    "hashedPassword": "hashed_password",
    "occupationArea": "Professor",
    "formationArea": "SC"
 }
+
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+   "name": "Project 1",
+   "description": "Description of Project 1",
+   "teacherId": 11
+}
+
+###
+
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+   "name": "Project 2",
+   "description": "Description of Project 2",
+   "teacherId": 1
+}
+
+###
+
+GET {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+}
+
+###
+
+
+GET {{ProjectManagementAPI_HostAddress}}/api/projects/1
+Content-Type: application/json
+
+{}
 
 ###
