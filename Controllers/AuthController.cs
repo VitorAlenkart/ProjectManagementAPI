@@ -10,20 +10,20 @@ using ProjectManagementAPI.Services;
 namespace ProjectManagementAPI.Controllers
 {
 
-    [Route("api/[controller]")]
+    [Route("api/")]
     [ApiController]
-    public class SignUpController : ControllerBase
+    public class AuthController : ControllerBase
     {
         private readonly ApplicationContext _context;
         private readonly PasswordService _passwordService;
 
-        public SignUpController(ApplicationContext context, PasswordService passwordService)
+        public AuthController(ApplicationContext context, PasswordService passwordService)
         {
             _context = context;
             _passwordService = passwordService;
         }
 
-        [HttpPost]
+        [HttpPost("signup")]
         public async Task<ActionResult> PostUser(JsonElement body)
         {
             body.TryGetProperty("hashedPassword", out JsonElement passwordElement);
