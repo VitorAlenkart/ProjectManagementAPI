@@ -1,12 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProjectManagementAPI.Data;
+using ProjectManagementAPI.DTOs;
 using ProjectManagementAPI.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 
 namespace ProjectManagementAPI.Controllers
@@ -26,14 +28,20 @@ namespace ProjectManagementAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Project>>> GetProjects()
         {
-            return await _context.Projects.ToListAsync();
+            return await _context.Projects
+                .Include(p => p.StudentProjects)
+                .ThenInclude(sp => sp.Student)
+                .ToListAsync();
         }
 
         // GET: api/Projects/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Project>> GetProject(int id)
         {
-            var project = await _context.Projects.FindAsync(id);
+            var project = await _context.Projects
+                .Include(p => p.StudentProjects)
+                .ThenInclude(sp => sp.Student)
+                .FirstOrDefaultAsync(p => p.Id == id);
 
             if (project == null)
             {
@@ -43,57 +51,54 @@ namespace ProjectManagementAPI.Controllers
             return project;
         }
 
+        [Authorize(Roles = "Teacher")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProject(int id, Project project)
+        public async Task<IActionResult> PutProject(
+            int id,
+            UpdateProjectDto dto)
         {
-            if (id != project.id)
+            var project = await _context.Projects.FindAsync(id);
+
+            if (project == null)
             {
-                return BadRequest();
+                return NotFound();
             }
 
-            _context.Entry(project).State = EntityState.Modified;
+            project.Name = dto.Name;
+            project.Description = dto.Description;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ProjectExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
+        [Authorize(Roles = "Teacher")]
         [HttpPost]
-        public async Task<ActionResult<Project>> PostProject(Project project)
+        public async Task<ActionResult<Project>> PostProject(CreateProjectDto dto)
         {
-            project.date = DateTime.Now;
-            if (project.teacherId == null && project.name == null && project.description == null)
-            {
-                return BadRequest();
-            }
-            else
-            {
-                var teacher = await _context.Teachers.FindAsync(project.teacherId);
-                if (teacher == null)
-                {
-                    return BadRequest();
-                }
-                _context.Projects.Add(project);
-                await _context.SaveChangesAsync();
+            var teacher = await _context.Teachers.FindAsync(dto.TeacherId);
 
-                return CreatedAtAction("GetProject", new { id = project.id }, project);
+            if (teacher == null)
+            {
+                return BadRequest("Teacher not found.");
             }
+
+            Project project = new()
+            {
+                Name = dto.Name,
+                Description = dto.Description,
+                TeacherId = dto.TeacherId,
+                Date = DateTime.Now
+            };
+
+            _context.Projects.Add(project);
+
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetProject), new { id = project.Id }, project);
         }
 
+        [Authorize(Roles = "Teacher")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(int id)
         {
@@ -108,10 +113,48 @@ namespace ProjectManagementAPI.Controllers
 
             return NoContent();
         }
+        [Authorize(Roles = "Teacher")]
+        [HttpPost("{projectId}/students")]
+        public async Task<ActionResult> AddStudentToProject(
+            int projectId,
+            AddStudentToProjectDto dto)
+        {
+            var project = await _context.Projects.FindAsync(projectId);
+
+            if (project == null)
+                return NotFound("Project not found.");
+
+            var student = await _context.Students.FindAsync(dto.StudentId);
+
+            if (student == null)
+                return NotFound("Student not found.");
+            var existingRelation = await _context.StudentProjects
+                .FirstOrDefaultAsync(sp =>
+                sp.ProjectId == projectId && sp.StudentId == dto.StudentId);
+
+            if (existingRelation != null)
+            {
+                return BadRequest("Student already in project.");
+            }
+
+            var relation = new StudentProject
+            {
+                ProjectId = projectId,
+                StudentId = dto.StudentId,
+                Role = dto.Role
+            };
+
+            _context.StudentProjects.Add(relation);
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
 
         private bool ProjectExists(int id)
         {
-            return _context.Projects.Any(e => e.id == id);
+            return _context.Projects.Any(e => e.Id == id);
         }
+
     }
 }

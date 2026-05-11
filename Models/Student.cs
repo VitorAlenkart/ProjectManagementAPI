@@ -3,6 +3,8 @@
     public class Student : User
     {
 
-        public required string educationalInstitution { get; set; }
+        public string? EducationalInstitution { get; set; }
+
+        public List<StudentProject> StudentProjects { get; set; } = new();
     }
 }

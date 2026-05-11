@@ -2,7 +2,7 @@
 {
     public class Teacher : User
     { 
-        public required string occupationArea { get; set; }
-        public required string formationArea { get; set; }
+        public string? OccupationArea { get; set; }
+        public string? FormationArea { get; set; }
     }
 }

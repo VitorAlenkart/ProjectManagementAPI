@@ -2,12 +2,12 @@
 {
     public class StudentProject
     {
-        public required int studentId { get; set; }
-        public required Student student { get; set; }
+        public required int StudentId { get; set; }
+        public Student? Student { get; set; }
 
-        public required int projectId { get; set; }
-        public required Project project { get; set; }
+        public required int ProjectId { get; set; }
+        public Project? Project { get; set; }
 
-        public required string role { get; set; }
+        public required string Role { get; set; }
     }
 }
