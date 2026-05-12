@@ -3,27 +3,26 @@ using Microsoft.AspNetCore.Identity;
 
 namespace ProjectManagementAPI.Services
 {
-	/// <summary>
-	/// Class responsible for handling password hashing and verification using ASP.NET Core Identity's PasswordHasher.
-	/// </summary>
+
 	public class PasswordService
 	{
 
-		public PasswordService()
-		{ }
+        private PasswordHasher<string> _passwordHasher ;
 
-		public string HashPassword(string password)
+        public PasswordService()
 		{
-			var passwordHasher = new PasswordHasher<string>();
-			return passwordHasher.HashPassword(null, password);
-		}
+            _passwordHasher = new PasswordHasher<string>();
+        }
 
-		public bool VerifyPassword(string hashedPassword, string providedPassword)
-		{
-			var passwordHasher = new PasswordHasher<string>();
-			var result = passwordHasher.VerifyHashedPassword(null, hashedPassword, providedPassword);
-			return result == PasswordVerificationResult.Success;
-		}
+        public string HashPassword(string password)
+        {
+            return _passwordHasher.HashPassword(null, password);
+        }
 
-	}
+        public bool VerifyPassword(string password, string hashedPassword)
+        {
+            return _passwordHasher.VerifyHashedPassword(null, hashedPassword, password) == PasswordVerificationResult.Success;
+        }
+
+    }
 }

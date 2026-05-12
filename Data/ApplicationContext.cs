@@ -10,6 +10,8 @@ namespace ProjectManagementAPI.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Ignore<User>();
+            modelBuilder.Entity<StudentProject>()
+                .HasKey(sp => new { sp.StudentId, sp.ProjectId });
         }
 
         public ApplicationContext(DbContextOptions<ApplicationContext> options)
@@ -19,5 +21,6 @@ namespace ProjectManagementAPI.Data
         public DbSet<Project> Projects { get; set; }
         public DbSet<Student> Students { get; set; }
         public DbSet<Teacher> Teachers { get; set; }
+        public DbSet<StudentProject> StudentProjects { get; set; }
     }
 }

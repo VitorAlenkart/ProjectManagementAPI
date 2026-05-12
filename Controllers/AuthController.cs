@@ -1,10 +1,17 @@
-﻿using System.Text.Json;
+﻿using Humanizer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages.Manage;
 using NuGet.DependencyResolver;
 using ProjectManagementAPI.Data;
+using ProjectManagementAPI.DTOs;
 using ProjectManagementAPI.Models;
 using ProjectManagementAPI.Services;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 
 
 namespace ProjectManagementAPI.Controllers
@@ -16,70 +23,172 @@ namespace ProjectManagementAPI.Controllers
     {
         private readonly ApplicationContext _context;
         private readonly PasswordService _passwordService;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(ApplicationContext context, PasswordService passwordService)
+        public AuthController(
+            ApplicationContext context,
+            PasswordService passwordService,
+            IConfiguration configuration)
         {
             _context = context;
             _passwordService = passwordService;
+            _configuration = configuration;
         }
 
         [HttpPost("signup")]
-        public async Task<ActionResult> PostUser(JsonElement body)
+        public async Task<ActionResult> Register([FromBody] JsonElement json)
         {
-            body.TryGetProperty("hashedPassword", out JsonElement passwordElement);
-            body.TryGetProperty("email", out JsonElement emailElement);
-            body.TryGetProperty("fullName", out JsonElement fullNameElement);
+            String? email = json.TryGetProperty("email", out var emailProperty) ? emailProperty.GetString() : null;
+            String? fullName = json.TryGetProperty("fullName", out var fullNameProperty) ? fullNameProperty.GetString() : null;
+            String? occupationArea = json.TryGetProperty("occupationArea", out var occupationAreaProperty) ? occupationAreaProperty.GetString() : null;
+            String? formationArea = json.TryGetProperty("formationArea", out var formationAreaProperty) ? formationAreaProperty.GetString() : null;
+            String? educationalInstitution = json.TryGetProperty("educationalInstitution", out var educationalInstitutionProperty) ? educationalInstitutionProperty.GetString() : null;
+            String? hashedPassword = json.TryGetProperty("password", out var passwordProperty) ? (_passwordService.HashPassword(passwordProperty.GetString()!)) : null;
 
-            if(passwordElement.ValueKind == JsonValueKind.Undefined || emailElement.ValueKind == JsonValueKind.Undefined || fullNameElement.ValueKind == JsonValueKind.Undefined)
+            Student? existingStudent = await _context.Students
+                .FirstOrDefaultAsync(s => s.Email == email);
+
+            Teacher? existingTeacher = await _context.Teachers
+                .FirstOrDefaultAsync(t => t.Email == email);
+
+            ActionResult result;
+            if (existingStudent == null && existingTeacher == null)
             {
-                return BadRequest("Invalid input: missing required fields.");
-            }
-            else
-            {
-                if (body.TryGetProperty("educationalInstitution", out JsonElement educationalInstitution) && educationalInstitution.ValueKind != JsonValueKind.Undefined)
+                if (fullName != null && hashedPassword != null && email != null)
                 {
-                    Student student = new Student
+                    if (educationalInstitution != null)
                     {
-                        fullName = fullNameElement.GetString()!,
-                        email = emailElement.GetString()!,
-                        hashedPassword = passwordElement.GetString()!,
-                        educationalInstitution = educationalInstitution.GetString()!
-                    };
-                    await PostStudent(student);
-                }
-                else if(body.TryGetProperty("occupationArea", out JsonElement occupationArea) && occupationArea.ValueKind != JsonValueKind.Undefined && body.TryGetProperty("formationArea", out JsonElement formationArea) && formationArea.ValueKind != JsonValueKind.Undefined)
-                {
-                    Teacher teacher = new Teacher
+                        
+                        result = await RegisterStudent(fullName,email,hashedPassword,educationalInstitution);
+
+                    }
+                    else if (occupationArea != null && formationArea != null)
                     {
-                        fullName = fullNameElement.GetString()!,
-                        email = emailElement.GetString()!,
-                        hashedPassword = passwordElement.GetString()!,
-                        occupationArea = occupationArea.GetString()!,
-                        formationArea = formationArea.GetString()!
-                    };
-                    await PostTeacher(teacher);
+                        
+                        result = await RegisterTeacher(fullName, email, hashedPassword, occupationArea, formationArea);
+
+                    }
+                    else
+                    {
+                        result = BadRequest("Data necessary to register teacher or student is missing.");
+                    }
+
                 }
                 else
                 {
-                    return BadRequest("Invalid input: missing required fields for either Student or Teacher.");
+                    result = BadRequest("Invalid registration data.");
                 }
-                return Created();
-            }   
+            }
+            else
+            {
+                result = BadRequest("Email already in use.");
+            }
+
+            return result;
+            
         }
 
-        public async Task PostTeacher(Teacher teacher)
+        public async Task<ActionResult> RegisterStudent(String fullName, String email, String hashedPassword, String educationalInstitution)
         {
-            teacher.hashedPassword = _passwordService.HashPassword(teacher.hashedPassword);
-            _context.Teachers.Add(teacher);
-            await _context.SaveChangesAsync(); 
-        }
+            Student student = new()
+            {
+                FullName = fullName,
+                Email = email!,
+                HashedPassword = hashedPassword,
+                EducationalInstitution = educationalInstitution
+            };
 
-        public async Task PostStudent(Student student)
-        {
-            student.hashedPassword = _passwordService.HashPassword(student.hashedPassword);
             _context.Students.Add(student);
+
             await _context.SaveChangesAsync();
+
+            return Created();
         }
 
+        public async Task<ActionResult> RegisterTeacher(String fullName, String email, String hashedPassword, String ocupationArea, String formationArea)
+        {
+
+            Teacher teacher = new()
+            {
+                FullName = fullName,
+                Email = email,
+                HashedPassword = hashedPassword,
+                OccupationArea = ocupationArea,
+                FormationArea = formationArea
+
+            };
+
+            _context.Teachers.Add(teacher);
+
+            await _context.SaveChangesAsync();
+
+            return Created();
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult> Login(LoginDto dto)
+        {
+            var student = await _context.Students
+                .FirstOrDefaultAsync(s => s.Email == dto.Email);
+
+            string role = "";
+
+            if (student != null)
+            {
+                bool validPassword = _passwordService.VerifyPassword(
+                    dto.Password,
+                    student.HashedPassword
+                );
+
+                if (!validPassword)
+                    return Unauthorized();
+                role = "Student";
+            }
+            else
+            {
+                var teacher = await _context.Teachers
+                    .FirstOrDefaultAsync(t => t.Email == dto.Email);
+
+                if (teacher == null)
+                    return Unauthorized();
+
+                bool validPassword = _passwordService.VerifyPassword(
+                    dto.Password,
+                    teacher.HashedPassword
+                );
+
+                if (!validPassword)
+                    return Unauthorized();
+                role = "Teacher";
+            }
+
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.Email, dto.Email),
+                new Claim(ClaimTypes.Role, role)
+            };
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)
+            );
+
+            var creds = new SigningCredentials(
+                key,
+                SecurityAlgorithms.HmacSha256
+            );
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddHours(2),
+                signingCredentials: creds
+            );
+
+            return Ok(new
+            {
+                token = new JwtSecurityTokenHandler().WriteToken(token)
+            });
+        }
     }
 }

@@ -24,29 +24,34 @@ namespace ProjectManagementAPI.Migrations
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Project", b =>
                 {
-                    b.Property<int>("id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("date")
+                    b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("description")
+                    b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("name")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("teacherId")
+                    b.Property<int?>("Studentid")
                         .HasColumnType("int");
 
-                    b.HasKey("id");
+                    b.Property<int>("TeacherId")
+                        .HasColumnType("int");
 
-                    b.HasIndex("teacherId");
+                    b.HasKey("Id");
+
+                    b.HasIndex("Studentid");
+
+                    b.HasIndex("TeacherId");
 
                     b.ToTable("Projects");
                 });
@@ -59,7 +64,7 @@ namespace ProjectManagementAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"));
 
-                    b.Property<string>("educationalInstitution")
+                    b.Property<string>("EducationalInstitution")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -78,6 +83,25 @@ namespace ProjectManagementAPI.Migrations
                     b.HasKey("id");
 
                     b.ToTable("Students");
+                });
+
+            modelBuilder.Entity("ProjectManagementAPI.Models.StudentProject", b =>
+                {
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("StudentId", "ProjectId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("StudentProjects");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Teacher", b =>
@@ -113,45 +137,48 @@ namespace ProjectManagementAPI.Migrations
                     b.ToTable("Teachers");
                 });
 
-            modelBuilder.Entity("ProjectStudent", b =>
+            modelBuilder.Entity("ProjectManagementAPI.Models.Project", b =>
                 {
-                    b.Property<int>("projectsid")
-                        .HasColumnType("int");
+                    b.HasOne("ProjectManagementAPI.Models.Student", null)
+                        .WithMany("projects")
+                        .HasForeignKey("Studentid");
 
-                    b.Property<int>("studentsid")
-                        .HasColumnType("int");
+                    b.HasOne("ProjectManagementAPI.Models.Teacher", null)
+                        .WithMany("projects")
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
 
-                    b.HasKey("projectsid", "studentsid");
+            modelBuilder.Entity("ProjectManagementAPI.Models.StudentProject", b =>
+                {
+                    b.HasOne("ProjectManagementAPI.Models.Project", "Project")
+                        .WithMany("StudentProjects")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasIndex("studentsid");
+                    b.HasOne("ProjectManagementAPI.Models.Student", "Student")
+                        .WithMany("StudentProjects")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.ToTable("ProjectStudent");
+                    b.Navigation("Project");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Project", b =>
                 {
-                    b.HasOne("ProjectManagementAPI.Models.Teacher", "teacher")
-                        .WithMany("projects")
-                        .HasForeignKey("teacherId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("teacher");
+                    b.Navigation("StudentProjects");
                 });
 
-            modelBuilder.Entity("ProjectStudent", b =>
+            modelBuilder.Entity("ProjectManagementAPI.Models.Student", b =>
                 {
-                    b.HasOne("ProjectManagementAPI.Models.Project", null)
-                        .WithMany()
-                        .HasForeignKey("projectsid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("StudentProjects");
 
-                    b.HasOne("ProjectManagementAPI.Models.Student", null)
-                        .WithMany()
-                        .HasForeignKey("studentsid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("projects");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Teacher", b =>
