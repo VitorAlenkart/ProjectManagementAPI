@@ -164,9 +164,40 @@ namespace ProjectManagementAPI.Controllers
             if (_projectService.ProjectExists(projectId))
             {
                 var project = await _context.Projects.FindAsync(projectId);
+
                 if (_projectService.ProjectBelongsToTeacher(projectId, teacherId))
                 {
-                    result = Ok();
+                    var student = await _context.Students.FindAsync(dto.StudentId);
+                    if (student != null)
+                    {
+                        var existingRelation = await _context.StudentProjects
+                            .FirstOrDefaultAsync(sp =>
+                            sp.ProjectId == projectId &&
+                            sp.StudentId == dto.StudentId);
+                        if (existingRelation == null)
+                        {
+                            var relation = new StudentProject
+                            {
+                                ProjectId = projectId,
+                                StudentId = dto.StudentId,
+                                Role = dto.Role
+                            };
+
+                            _context.StudentProjects.Add(relation);
+                            await _context.SaveChangesAsync();
+
+                            result = Ok();
+                        }
+                        else
+                        {
+                            result = BadRequest("Student already in project.");
+                        }
+                    }
+                    else
+                    {
+                        result = NotFound("Student not found.");
+                    }
+                    
                 }
                 else
                 {
