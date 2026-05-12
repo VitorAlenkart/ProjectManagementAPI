@@ -41,46 +41,39 @@ namespace ProjectManagementAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("Studentid")
-                        .HasColumnType("int");
-
                     b.Property<int>("TeacherId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Studentid");
-
-                    b.HasIndex("TeacherId");
 
                     b.ToTable("Projects");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Student", b =>
                 {
-                    b.Property<int>("id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("EducationalInstitution")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("email")
+                    b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("fullName")
+                    b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("hashedPassword")
+                    b.Property<string>("HashedPassword")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("id");
+                    b.HasKey("Id");
 
                     b.ToTable("Students");
                 });
@@ -106,67 +99,54 @@ namespace ProjectManagementAPI.Migrations
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Teacher", b =>
                 {
-                    b.Property<int>("id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("email")
+                    b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("formationArea")
+                    b.Property<string>("FormationArea")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("fullName")
+                    b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("hashedPassword")
+                    b.Property<string>("HashedPassword")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("occupationArea")
+                    b.Property<string>("OccupationArea")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("id");
+                    b.HasKey("Id");
 
                     b.ToTable("Teachers");
                 });
 
-            modelBuilder.Entity("ProjectManagementAPI.Models.Project", b =>
-                {
-                    b.HasOne("ProjectManagementAPI.Models.Student", null)
-                        .WithMany("projects")
-                        .HasForeignKey("Studentid");
-
-                    b.HasOne("ProjectManagementAPI.Models.Teacher", null)
-                        .WithMany("projects")
-                        .HasForeignKey("TeacherId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("ProjectManagementAPI.Models.StudentProject", b =>
                 {
-                    b.HasOne("ProjectManagementAPI.Models.Project", "Project")
+                    b.HasOne("ProjectManagementAPI.Models.Project", "project")
                         .WithMany("StudentProjects")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ProjectManagementAPI.Models.Student", "Student")
+                    b.HasOne("ProjectManagementAPI.Models.Student", "student")
                         .WithMany("StudentProjects")
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Project");
+                    b.Navigation("project");
 
-                    b.Navigation("Student");
+                    b.Navigation("student");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Project", b =>
@@ -177,13 +157,6 @@ namespace ProjectManagementAPI.Migrations
             modelBuilder.Entity("ProjectManagementAPI.Models.Student", b =>
                 {
                     b.Navigation("StudentProjects");
-
-                    b.Navigation("projects");
-                });
-
-            modelBuilder.Entity("ProjectManagementAPI.Models.Teacher", b =>
-                {
-                    b.Navigation("projects");
                 });
 #pragma warning restore 612, 618
         }
