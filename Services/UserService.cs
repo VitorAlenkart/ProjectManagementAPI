@@ -15,7 +15,7 @@ namespace ProjectManagementAPI.Services
 
         public StudentDTO? GetStudentById(int id)
         {
-            Student student = _context.Students.FirstOrDefault(s => s.Id == id)
+            Student student = _context.Students.FirstOrDefault(s => s.Id == id);
             StudentDTO user = new StudentDTO()
             {
                 FullName = student.FullName,
