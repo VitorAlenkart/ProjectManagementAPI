@@ -22,11 +22,13 @@ namespace ProjectManagementAPI.Controllers
     {
         private readonly ApplicationContext _context;
         private readonly ProjectService _projectService;
+        private readonly UserService _userService;
 
-        public ProjectsController(ApplicationContext context, ProjectService projectService)
+        public ProjectsController(ApplicationContext context, ProjectService projectService, UserService userService)
         {
             _context = context;
             _projectService = projectService;
+            _userService = userService;
         }
 
 
@@ -45,12 +47,12 @@ namespace ProjectManagementAPI.Controllers
             {
                 var result = await (
                 from p in _context.Projects
-                    join t in _context.Teachers
-                    on p.TeacherId equals t.Id
-                        join sp in _context.StudentProjects
-                        on p.Id equals sp.ProjectId
-                            join s in _context.Students
-                            on sp.StudentId equals s.Id
+                join t in _context.Teachers
+                on p.TeacherId equals t.Id
+                join sp in _context.StudentProjects
+                on p.Id equals sp.ProjectId
+                join s in _context.Students
+                on sp.StudentId equals s.Id
                 where p.Id == id
 
                 select new
@@ -62,7 +64,7 @@ namespace ProjectManagementAPI.Controllers
                     teacherFullName = t.FullName,
                     date = p.Date,
 
-                    Student = new 
+                    Student = new
                     {
                         s.Id,
                         s.FullName,
@@ -115,7 +117,7 @@ namespace ProjectManagementAPI.Controllers
             string? name = json.TryGetProperty("name", out var nameProperty) ? nameProperty.GetString() : null;
             string? description = json.TryGetProperty("description", out var descriptionProperty) ? descriptionProperty.GetString() : null;
 
-            if(name == null || description == null)
+            if (name == null || description == null)
             {
                 return BadRequest("Name and description are required.");
             }
@@ -178,35 +180,75 @@ namespace ProjectManagementAPI.Controllers
             {
                 result = NotFound();
             }
-            
 
-/*            var student = await _context.Students.FindAsync(dto.StudentId);
 
-            
-            var existingRelation = await _context.StudentProjects
-                .FirstOrDefaultAsync(sp =>
-                sp.ProjectId == projectId && sp.StudentId == dto.StudentId);
+            /*            var student = await _context.Students.FindAsync(dto.StudentId);
 
-            if (existingRelation != null)
-            {
-                return BadRequest("Student already in project.");
-            }
 
-            var relation = new StudentProject
-            {
-                ProjectId = projectId,
-                StudentId = dto.StudentId,
-                Role = dto.Role
-            };
+                        var existingRelation = await _context.StudentProjects
+                            .FirstOrDefaultAsync(sp =>
+                            sp.ProjectId == projectId && sp.StudentId == dto.StudentId);
 
-            _context.StudentProjects.Add(relation);
+                        if (existingRelation != null)
+                        {
+                            return BadRequest("Student already in project.");
+                        }
 
-            await _context.SaveChangesAsync();*/
+                        var relation = new StudentProject
+                        {
+                            ProjectId = projectId,
+                            StudentId = dto.StudentId,
+                            Role = dto.Role
+                        };
+
+                        _context.StudentProjects.Add(relation);
+
+                        await _context.SaveChangesAsync();*/
 
             return result;
         }
 
-        
+        [Authorize]
+        [HttpDelete("{id}")]
+        public async Task<ActionResult> DeleteStudentFromProject(int projectId, int studentId)
+        {
+            ActionResult result = null;
+            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            Project project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project != null)
+            {
+
+                if (_projectService.ProjectBelongsToTeacher(projectId, teacherId))
+                {
+                    if (!_projectService.StudentBelongsToProject(projectId, studentId))
+                    {
+                        result = NotFound("Student not in project.");
+                    }
+                    else
+                    {
+                        _context.StudentProjects.RemoveRange(_context.StudentProjects.Where(sp => sp.ProjectId == projectId && sp.StudentId == studentId));
+                        await _context.SaveChangesAsync();
+                        StudentDTO student = _userService.GetStudentById(studentId);
+                        result = Ok("Student " + student.FullName + " removed from project.");
+                    }
+
+                }
+                else
+                {
+                    result = Forbid();
+                }
+            }
+            else
+            {
+                result = NotFound();
+            }
+
+            return result;
+
+
+
+        }
 
     }
 }
