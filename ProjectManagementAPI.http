@@ -99,3 +99,21 @@ Content-Type: application/json
 }
 
 ###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+    "Name": "Projeto Teste",
+    "Description": "algum"
+}
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+  //Project
+}
+
+###

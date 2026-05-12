@@ -1,5 +1,4 @@
-﻿using Humanizer;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages.Manage;
@@ -25,10 +24,7 @@ namespace ProjectManagementAPI.Controllers
         private readonly PasswordService _passwordService;
         private readonly IConfiguration _configuration;
 
-        public AuthController(
-            ApplicationContext context,
-            PasswordService passwordService,
-            IConfiguration configuration)
+        public AuthController(ApplicationContext context, PasswordService passwordService, IConfiguration configuration)
         {
             _context = context;
             _passwordService = passwordService;
@@ -128,67 +124,74 @@ namespace ProjectManagementAPI.Controllers
         [HttpPost("login")]
         public async Task<ActionResult> Login(LoginDto dto)
         {
+            ActionResult result = null;
+
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Email == dto.Email);
 
+            var teacher = await _context.Teachers
+                    .FirstOrDefaultAsync(t => t.Email == dto.Email);
+
+            User? user = null;
             string role = "";
 
             if (student != null)
             {
-                bool validPassword = _passwordService.VerifyPassword(
-                    dto.Password,
-                    student.HashedPassword
+                bool validPassword = _passwordService.VerifyPassword(dto.Password, student.HashedPassword);
+
+                if (validPassword)
+                {
+                    role = "Student";
+                    user = student;
+                }
+                else
+                    result = Unauthorized();
+            }
+            else if(teacher != null)
+            {
+                bool validPassword = _passwordService.VerifyPassword(dto.Password, teacher.HashedPassword);
+
+                if (validPassword) 
+                { 
+                    role = "Teacher";
+                    user = teacher;
+                }
+                else
+                    return Unauthorized();
+            }
+
+            if (user != null)
+            {
+                var claims = new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim(ClaimTypes.Email, dto.Email),
+                    new Claim(ClaimTypes.Role, role)
+                };
+
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+
+                var creds = new SigningCredentials(key,SecurityAlgorithms.HmacSha256);
+
+                var token = new JwtSecurityToken(
+                    issuer: _configuration["Jwt:Issuer"],
+                    audience: _configuration["Jwt:Audience"],
+                    claims: claims,
+                    expires: DateTime.Now.AddHours(2),
+                    signingCredentials: creds
                 );
 
-                if (!validPassword)
-                    return Unauthorized();
-                role = "Student";
+                result = Ok(new
+                {
+                    token = new JwtSecurityTokenHandler().WriteToken(token)
+                });
             }
             else
             {
-                var teacher = await _context.Teachers
-                    .FirstOrDefaultAsync(t => t.Email == dto.Email);
-
-                if (teacher == null)
-                    return Unauthorized();
-
-                bool validPassword = _passwordService.VerifyPassword(
-                    dto.Password,
-                    teacher.HashedPassword
-                );
-
-                if (!validPassword)
-                    return Unauthorized();
-                role = "Teacher";
+                result = Unauthorized();
             }
 
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.Email, dto.Email),
-                new Claim(ClaimTypes.Role, role)
-            };
-
-            var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)
-            );
-
-            var creds = new SigningCredentials(
-                key,
-                SecurityAlgorithms.HmacSha256
-            );
-
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddHours(2),
-                signingCredentials: creds
-            );
-
-            return Ok(new
-            {
-                token = new JwtSecurityTokenHandler().WriteToken(token)
-            });
+            return result;
         }
     }
 }

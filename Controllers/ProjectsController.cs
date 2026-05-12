@@ -5,9 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using ProjectManagementAPI.Data;
 using ProjectManagementAPI.DTOs;
 using ProjectManagementAPI.Models;
+using ProjectManagementAPI.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 
@@ -18,10 +21,12 @@ namespace ProjectManagementAPI.Controllers
     public class ProjectsController : ControllerBase
     {
         private readonly ApplicationContext _context;
+        private readonly ProjectService _projectService;
 
-        public ProjectsController(ApplicationContext context)
+        public ProjectsController(ApplicationContext context, ProjectService projectService)
         {
             _context = context;
+            _projectService = projectService;
         }
 
 
@@ -36,7 +41,7 @@ namespace ProjectManagementAPI.Controllers
         public async Task<ActionResult<DetailedProjectDTO>> GetProject(int id)
         {
             ActionResult<DetailedProjectDTO> project = NotFound();
-            if (ProjectExists(id))
+            if (_projectService.ProjectExists(id))
             {
                 var result = await (
                 from p in _context.Projects
@@ -103,22 +108,26 @@ namespace ProjectManagementAPI.Controllers
             return NoContent();
         }
 
-        [Authorize(Roles = "Teacher")]
+        [Authorize]
         [HttpPost]
-        public async Task<ActionResult<Project>> PostProject(Project dto)
+        public async Task<ActionResult<Project>> PostProject([FromBody] JsonElement json)
         {
-            var teacher = await _context.Teachers.FindAsync(dto.TeacherId);
+            string? name = json.TryGetProperty("name", out var nameProperty) ? nameProperty.GetString() : null;
+            string? description = json.TryGetProperty("description", out var descriptionProperty) ? descriptionProperty.GetString() : null;
 
-            if (teacher == null)
+            if(name == null || description == null)
             {
-                return BadRequest("Teacher not found.");
+                return BadRequest("Name and description are required.");
             }
+
+            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var teacher = await _context.Teachers.FindAsync(teacherId);
 
             Project project = new()
             {
-                Name = dto.Name,
-                Description = dto.Description,
-                TeacherId = dto.TeacherId,
+                Name = name,
+                Description = description,
+                TeacherId = teacherId,
                 Date = DateTime.Now
             };
 
@@ -129,7 +138,7 @@ namespace ProjectManagementAPI.Controllers
             return CreatedAtAction(nameof(GetProject), new { id = project.Id }, project);
         }
 
-        [Authorize(Roles = "Teacher")]
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(int id)
         {
@@ -147,19 +156,33 @@ namespace ProjectManagementAPI.Controllers
 
         [Authorize(Roles = "Teacher")]
         [HttpPost("link/{projectId}/students")]
-        public async Task<ActionResult> AddStudentToProject(
-            int projectId,
-            StudentProjectDTO dto)
+        public async Task<ActionResult> AddStudentToProject(int projectId, StudentProjectDTO dto)
         {
-            var project = await _context.Projects.FindAsync(projectId);
+            ActionResult result = null;
 
-            if (project == null)
-                return NotFound("Project not found.");
+            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            if (_projectService.ProjectExists(projectId))
+            {
+                var project = await _context.Projects.FindAsync(projectId);
+                if (_projectService.ProjectBelongsToTeacher(projectId, teacherId))
+                {
+                    result = Ok();
+                }
+                else
+                {
+                    result = Forbid();
+                }
 
-            var student = await _context.Students.FindAsync(dto.StudentId);
+            }
+            else
+            {
+                result = NotFound();
+            }
+            
 
-            if (student == null)
-                return NotFound("Student not found.");
+/*            var student = await _context.Students.FindAsync(dto.StudentId);
+
+            
             var existingRelation = await _context.StudentProjects
                 .FirstOrDefaultAsync(sp =>
                 sp.ProjectId == projectId && sp.StudentId == dto.StudentId);
@@ -178,15 +201,12 @@ namespace ProjectManagementAPI.Controllers
 
             _context.StudentProjects.Add(relation);
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();*/
 
-            return Ok();
+            return result;
         }
 
-        private bool ProjectExists(int id)
-        {
-            return _context.Projects.Any(e => e.Id == id);
-        }
+        
 
     }
 }
