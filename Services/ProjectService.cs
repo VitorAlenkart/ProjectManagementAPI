@@ -28,9 +28,14 @@ namespace ProjectManagementAPI.Services
             return _context.Projects.Any(p => p.Id == projectId && p.TeacherId == teacherId);
         }
 
-        public async Task<Project> getProjectById(int id)
+        public async Task<Project> GetProjectById(int id)
         {
             return await _context.Projects.FindAsync(id);
+        }
+
+        public bool StudentBelongsToProject(int projectId, int studentId)
+        {
+            return _context.StudentProjects.Any(sp => sp.ProjectId == projectId && sp.StudentId == studentId);
         }
     }
 }
