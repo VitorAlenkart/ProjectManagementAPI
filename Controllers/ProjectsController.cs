@@ -172,11 +172,7 @@ namespace ProjectManagementAPI.Controllers
                     var student = await _context.Students.FindAsync(dto.StudentId);
                     if (student != null)
                     {
-                        var existingRelation = await _context.StudentProjects
-                            .FirstOrDefaultAsync(sp =>
-                            sp.ProjectId == projectId &&
-                            sp.StudentId == dto.StudentId);
-                        if (existingRelation == null)
+                        if (_projectService.StudentBelongsToProject(projectId, student.Id))
                         {
                             var relation = new StudentProject
                             {
