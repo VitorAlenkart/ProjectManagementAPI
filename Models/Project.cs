@@ -1,16 +1,20 @@
 ﻿using Microsoft.VisualBasic;
+using System.ComponentModel.DataAnnotations;
 
 namespace ProjectManagementAPI.Models
 {
     public class Project
     {
-        public int id { get; set; }
-        public required string name { get; set; }
-        public required string description { get; set; }
-        public required DateTime date { get; set; }
-
-        public int teacherId { get; set; }
-        public required Teacher teacher { get; set; }
-        public List<Student> students { get;} = new();
+        [Key]
+        public int Id { get; set; }
+        [Required]
+        public required string Name { get; set; }
+        [Required]
+        public required string Description { get; set; }
+        [Required]
+        public required DateTime Date { get; set; }
+        [Required]
+        public int TeacherId { get; set; }
+        public List<StudentProject> StudentProjects { get; set; } = new();
     }
 }

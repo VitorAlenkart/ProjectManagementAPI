@@ -1,11 +1,16 @@
-﻿namespace ProjectManagementAPI.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ProjectManagementAPI.Models
 {
     public class StudentProject
     {
-        public required int studentId { get; set; }
-        public required Student student { get; set; }
+        [Key]
+        public required int StudentId { get; set; }
+        [Key]
+        public required int ProjectId { get; set; }
+        public Student student { get; set; }
+        public Project project { get; set; }
 
-        public required int projectId { get; set; }
-        public required Project project { get; set; }
+        public required string Role { get; set; }
     }
 }

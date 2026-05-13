@@ -1,4 +1,4 @@
-﻿{
+{
 
   "ConnectionStrings": {
     "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=ApplicationApiDB;Trusted_Connection=True;"

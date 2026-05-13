@@ -1,26 +1,119 @@
 @ProjectManagementAPI_HostAddress = https://localhost:7219
 
-POST {{ProjectManagementAPI_HostAddress}}/api/signup/student
+POST {{ProjectManagementAPI_HostAddress}}/api/signup
 Content-Type: application/json
 
 {
-   "fullName": "John",
-   "email": "john.doe@example.com",
+   "fullName": "Vitor A",
+   "email": "vitor@example.com",
+   "hashedPassword": "hashed_password",
+   "occupationArea": "Professor",
+   "formationArea": "SC"
+}
+
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/signup
+Content-Type: application/json
+
+{
+   "fullName": "Vitor A",
+   "email": "vitor@example.com",
    "hashedPassword": "hashed_password",
    "educationalInstitution": "Example University"
 }
 
 ###
 
-POST {{ProjectManagementAPI_HostAddress}}/api/signup/teacher
+POST {{ProjectManagementAPI_HostAddress}}/api/signup
 Content-Type: application/json
 
 {
-  "fullName": "John",
-   "email": "john.doe@example.com",
-   "hashedPassword": "hashed_password",
+    "fullName": "João B",
+   "email": "joao@example.com",
+   "password": "hashed_password",
    "occupationArea": "Professor",
-   "formationArea": "SC"
+   "formationArea": "H"
+}
+
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+   "name": "Project 1",
+   "description": "Description of Project 1",
+   "teacherId": 11
+}
+
+###
+
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+   "name": "Project 2",
+   "description": "Description of Project 2",
+   "teacherId": 1
+}
+
+###
+
+GET {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+}
+
+###
+
+
+GET {{ProjectManagementAPI_HostAddress}}/api/projects/1
+Content-Type: application/json
+
+{}
+
+###
+
+@projectId=0
+POST {{ProjectManagementAPI_HostAddress}}/api/projects/link/{{projectId}}/students
+Content-Type: application/json
+
+{
+  "studentId": 1,
+  "role": "Manager"
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJ2aXRvckBleGFtcGxlLmNvbSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlN0dWRlbnQiLCJleHAiOjE3Nzg2MTI4ODQsImlzcyI6IlByb2plY3RNYW5hZ2VtZW50QVBJIiwiYXVkIjoiUHJvamVjdE1hbmFnZW1lbnRBUEkifQ.V_nfTExwr-HSA855zyvo10XoYW75fp4JZAwkeEd1kEI"
+}
+
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/login
+Content-Type: application/json
+
+{
+  "email": "vitor@example.com",
+  "password": "hashed_password"
+}
+
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+    "Name": "Projeto Teste",
+    "Description": "algum"
+}
+###
+
+POST {{ProjectManagementAPI_HostAddress}}/api/projects
+Content-Type: application/json
+
+{
+  //Project
 }
 
 ###

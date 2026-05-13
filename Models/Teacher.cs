@@ -1,8 +1,12 @@
-﻿namespace ProjectManagementAPI.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ProjectManagementAPI.Models
 {
     public class Teacher : User
-    { 
-        public required string occupationArea { get; set; }
-        public required string formationArea { get; set; }
+    {
+        [Required]
+        public string OccupationArea { get; set; }
+        [Required]
+        public string FormationArea { get; set; }
     }
 }
