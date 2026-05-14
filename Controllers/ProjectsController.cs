@@ -38,111 +38,119 @@ namespace ProjectManagementAPI.Controllers
             return await _context.Projects.ToListAsync();
         }
 
-        // GET: api/Projects/5
         [HttpGet("{id}")]
         public async Task<ActionResult<DetailedProjectDTO>> GetProject(int id)
         {
-            ActionResult<DetailedProjectDTO> project = NotFound();
-            if (_projectService.ProjectExists(id))
+            ActionResult<DetailedProjectDTO> result = NotFound();
+            Project project = await _context.Projects.FindAsync(id);
+
+            if (project != null)
             {
-                var result = await (
-                from p in _context.Projects
-                join t in _context.Teachers
-                on p.TeacherId equals t.Id
-                join sp in _context.StudentProjects
-                on p.Id equals sp.ProjectId
-                join s in _context.Students
-                on sp.StudentId equals s.Id
-                where p.Id == id
+                List<StudentProject> relations = _context.StudentProjects.Where(sp => sp.ProjectId == id).ToList();
 
-                select new
+                var students = new List<StudentDTO>();
+                foreach (var rel in relations)
                 {
-                    id = p.Id,
-                    name = p.Name,
-                    description = p.Description,
-                    teacherId = p.TeacherId,
-                    teacherFullName = t.FullName,
-                    date = p.Date,
-
-                    Student = new
+                    var s = _userService.GetStudentById(rel.StudentId);
+                    if (s != null)
                     {
-                        s.Id,
-                        s.FullName,
-                        s.Email,
-                        sp.Role
+                        students.Add(new StudentDTO
+                        {
+                            Id = s.Id,
+                            FullName = s.FullName,
+                            Email = s.Email,
+                            EducationalInstitution = s.EducationalInstitution,
+                            Role = rel.Role 
+                        });
                     }
                 }
-                ).ToListAsync();
 
-                project = new DetailedProjectDTO()
+                DetailedProjectDTO detailedProject = new()
                 {
-                    id = result.First().id,
-                    name = result.First().name,
-                    description = result.First().description,
-                    teacherId = result.First().teacherId,
-                    date = result.First().date,
-                    students = (List<StudentDTO>)result.Select(r => r.Student)
+                    id = project.Id,
+                    name = project.Name,
+                    description = project.Description,
+                    date = project.Date,
+                    teacherId = project.TeacherId,
+                    students = students
+
                 };
 
+                result = Ok(detailedProject);
             }
 
 
-            return project;
+            return result;
         }
 
         [Authorize(Roles = "Teacher")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProject(
-            int id,
-            UpdateProjectDto dto)
+        public async Task<IActionResult> PutProject(int id, UpdateProjectDto dto)
         {
-            
+            ActionResult result = NotFound();
             var project = await _context.Projects.FindAsync(id);
 
-            if (project == null)
+            if (project != null)
             {
-                return NotFound();
+                int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+                if (teacherId == project.TeacherId)
+                {
+                    if (dto.Name == null || dto.Description == null)
+                    {
+                        result = BadRequest("Name and description are required.");
+                    }
+                    else
+                    {
+                        project.Name = dto.Name;
+                        project.Description = dto.Description;
+                        result = Ok(project);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                else
+                {
+                    result = Forbid("Teacher not owner of project");
+                }
+                
             }
-
-            project.Name = dto.Name;
-            project.Description = dto.Description;
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            return result;
         }
 
-        [Authorize]
+        [Authorize(Roles = "Teacher")]
         [HttpPost]
         public async Task<ActionResult<Project>> PostProject([FromBody] JsonElement json)
         {
+            ActionResult result;
+
             string? name = json.TryGetProperty("name", out var nameProperty) ? nameProperty.GetString() : null;
             string? description = json.TryGetProperty("description", out var descriptionProperty) ? descriptionProperty.GetString() : null;
 
             if (name == null || description == null)
             {
-                return BadRequest("Name and description are required.");
+                result = BadRequest("Name and description are required.");
+            }
+            else
+            {
+                int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+                Project project = new()
+                {
+                    Name = name,
+                    Description = description,
+                    TeacherId = teacherId,
+                    Date = DateTime.Now
+                };
+
+                _context.Projects.Add(project);
+
+                await _context.SaveChangesAsync();
+                result = Ok(project);
             }
 
-            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var teacher = await _context.Teachers.FindAsync(teacherId);
-
-            Project project = new()
-            {
-                Name = name,
-                Description = description,
-                TeacherId = teacherId,
-                Date = DateTime.Now
-            };
-
-            _context.Projects.Add(project);
-
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetProject), new { id = project.Id }, project);
+            return result;
         }
 
-        [Authorize]
+        [Authorize(Roles = "Teacher")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(int id)
         {
@@ -157,11 +165,11 @@ namespace ProjectManagementAPI.Controllers
                 {
                     _context.Projects.Remove(project);
                     await _context.SaveChangesAsync();
-                    result = Ok();
+                    result = Ok(project);
                 }
                 else
                 {
-                    result = Forbid();
+                    result = Forbid("Teacher not in charge of project");
                 }
             }
             
@@ -177,6 +185,7 @@ namespace ProjectManagementAPI.Controllers
             int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var project = await _context.Projects.FindAsync(projectId);
             var student = await _context.Students.FindAsync(dto.StudentId);
+
             if (project == null)
             {
                 result = NotFound("Project not found");
@@ -189,7 +198,7 @@ namespace ProjectManagementAPI.Controllers
             {
                 result = NotFound("Student not found");
             }
-            else if (!_projectService.StudentBelongsToProject(project.Id, student.Id))
+            else if (_projectService.StudentBelongsToProject(project.Id, student.Id))
             {
                 result = BadRequest("Student already in Project");
             }
@@ -205,23 +214,23 @@ namespace ProjectManagementAPI.Controllers
                 _context.StudentProjects.Add(relation);
                 await _context.SaveChangesAsync();
 
-                result = Ok();
+                result = Ok(relation);
             }
             
             return result;
         }
 
-        [Authorize]
-        [HttpDelete("unlink/{id}")]
+        [Authorize(Roles = "Teacher")]
+        [HttpDelete("{projectId}/unlink/{studentId}")]
         public async Task<ActionResult> DeleteStudentFromProject(int projectId, int studentId)
         {
             ActionResult result;
-            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            
             Project project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
 
             if (project != null)
             {
-
+                int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 if (_projectService.ProjectBelongsToTeacher(projectId, teacherId))
                 {
                     if (!_projectService.StudentBelongsToProject(projectId, studentId))
@@ -230,7 +239,8 @@ namespace ProjectManagementAPI.Controllers
                     }
                     else
                     {
-                        _context.StudentProjects.RemoveRange(_context.StudentProjects.Where(sp => sp.ProjectId == projectId && sp.StudentId == studentId));
+                        StudentProject tupla = _context.StudentProjects.Where(sp => sp.ProjectId == projectId && sp.StudentId == studentId).FirstOrDefault();
+                        _context.StudentProjects.RemoveRange(tupla);
                         await _context.SaveChangesAsync();
                         StudentDTO student = _userService.GetStudentById(studentId);
                         result = Ok("Student " + student.FullName + " removed from project.");
@@ -238,8 +248,8 @@ namespace ProjectManagementAPI.Controllers
 
                 }
                 else
-                {
-                    result = Forbid();
+                {   
+                    result = Forbid("");
                 }
             }
             else
