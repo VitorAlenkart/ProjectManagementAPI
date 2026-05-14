@@ -83,6 +83,7 @@ namespace ProjectManagementAPI.Controllers
                     date = result.First().date,
                     students = (List<StudentDTO>)result.Select(r => r.Student)
                 };
+
             }
 
 
@@ -145,16 +146,46 @@ namespace ProjectManagementAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(int id)
         {
+            ActionResult result;
             var project = await _context.Projects.FindAsync(id);
-            if (project == null)
-            {
-                return NotFound();
-            }
 
+            if (project != null)
+            {
+                int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+                if (_projectService.ProjectBelongsToTeacher(id, teacherId))
+                {
             _context.Projects.Remove(project);
             await _context.SaveChangesAsync();
+                    result = Ok();
+                }
+                else
+                {
+                    result = Forbid();
+                }
+            }
+            else if (teacherId != project.TeacherId)
+            {
+                result = Forbid("Teacher not in charge of project");
+            } 
+            else if (student == null)
+            {
+                result = NotFound("Student not found");
+            }
+            else if (!_projectService.StudentBelongsToProject(project.Id, student.Id))
+            {
+                result = BadRequest("Student already in Project");
+            }
+            else
+            {
+                var relation = new StudentProject
+                {
+                    ProjectId = projectId,
+                    StudentId = dto.StudentId,
+                    Role = dto.Role
+                };
 
-            return NoContent();
+            return result;
         }
 
         [Authorize(Roles = "Teacher")]
@@ -201,7 +232,7 @@ namespace ProjectManagementAPI.Controllers
         }
 
         [Authorize]
-        [HttpDelete("{id}")]
+        [HttpDelete("unlink/{id}")]
         public async Task<ActionResult> DeleteStudentFromProject(int projectId, int studentId)
         {
             ActionResult result;
