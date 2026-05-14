@@ -164,10 +164,26 @@ namespace ProjectManagementAPI.Controllers
                     result = Forbid();
                 }
             }
+            else if (teacherId != project.TeacherId)
+            {
+                result = Forbid("Teacher not in charge of project");
+            } 
+            else if (student == null)
+            {
+                result = NotFound("Student not found");
+            }
+            else if (!_projectService.StudentBelongsToProject(project.Id, student.Id))
+            {
+                result = BadRequest("Student already in Project");
+            }
             else
             {
-                result = NotFound();
-            }
+                var relation = new StudentProject
+                {
+                    ProjectId = projectId,
+                    StudentId = dto.StudentId,
+                    Role = dto.Role
+                };
 
             return result;
         }
