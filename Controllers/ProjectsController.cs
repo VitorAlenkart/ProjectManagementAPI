@@ -96,6 +96,7 @@ namespace ProjectManagementAPI.Controllers
             int id,
             UpdateProjectDto dto)
         {
+            
             var project = await _context.Projects.FindAsync(id);
 
             if (project == null)
@@ -175,78 +176,42 @@ namespace ProjectManagementAPI.Controllers
         [HttpPost("link/{projectId}/students")]
         public async Task<ActionResult> AddStudentToProject(int projectId, StudentProjectDTO dto)
         {
-            ActionResult result = null;
+            ActionResult result;
 
-            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            if (_projectService.ProjectExists(projectId))
+            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var project = await _context.Projects.FindAsync(projectId);
+            var student = await _context.Students.FindAsync(dto.StudentId);
+            if (project == null)
             {
-                var project = await _context.Projects.FindAsync(projectId);
-
-                if (_projectService.ProjectBelongsToTeacher(projectId, teacherId))
-                {
-                    var student = await _context.Students.FindAsync(dto.StudentId);
-                    if (student != null)
-                    {
-                        if (_projectService.StudentBelongsToProject(projectId, student.Id))
-                        {
-                            var relation = new StudentProject
-                            {
-                                ProjectId = projectId,
-                                StudentId = dto.StudentId,
-                                Role = dto.Role
-                            };
-
-                            _context.StudentProjects.Add(relation);
-                            await _context.SaveChangesAsync();
-
-                            result = Ok();
-                        }
-                        else
-                        {
-                            result = BadRequest("Student already in project.");
-                        }
-                    }
-                    else
-                    {
-                        result = NotFound("Student not found.");
-                    }
-                    
-                }
-                else
-                {
-                    result = Forbid();
-                }
-
+                result = NotFound("Project not found");
+            }
+            else if (teacherId != project.TeacherId)
+            {
+                result = Forbid("Teacher not in charge of project");
+            } 
+            else if (student == null)
+            {
+                result = NotFound("Student not found");
+            }
+            else if (!_projectService.StudentBelongsToProject(project.Id, student.Id))
+            {
+                result = BadRequest("Student already in Project");
             }
             else
             {
-                result = NotFound();
+                var relation = new StudentProject
+                {
+                    ProjectId = projectId,
+                    StudentId = dto.StudentId,
+                    Role = dto.Role
+                };
+
+                _context.StudentProjects.Add(relation);
+                await _context.SaveChangesAsync();
+
+                result = Ok();
             }
-
-
-            /*            var student = await _context.Students.FindAsync(dto.StudentId);
-
-
-                        var existingRelation = await _context.StudentProjects
-                            .FirstOrDefaultAsync(sp =>
-                            sp.ProjectId == projectId && sp.StudentId == dto.StudentId);
-
-                        if (existingRelation != null)
-                        {
-                            return BadRequest("Student already in project.");
-                        }
-
-                        var relation = new StudentProject
-                        {
-                            ProjectId = projectId,
-                            StudentId = dto.StudentId,
-                            Role = dto.Role
-                        };
-
-                        _context.StudentProjects.Add(relation);
-
-                        await _context.SaveChangesAsync();*/
-
+            
             return result;
         }
 
@@ -254,8 +219,8 @@ namespace ProjectManagementAPI.Controllers
         [HttpDelete("unlink/{id}")]
         public async Task<ActionResult> DeleteStudentFromProject(int projectId, int studentId)
         {
-            ActionResult result = null;
-            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            ActionResult result;
+            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             Project project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
 
             if (project != null)

@@ -83,7 +83,7 @@ POST {{ProjectManagementAPI_HostAddress}}/api/projects/link/{{projectId}}/studen
 Content-Type: application/json
 
 {
-  "studentId": 1,
+  "studentId": 3,
   "role": "Manager"
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJ2aXRvckBleGFtcGxlLmNvbSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlN0dWRlbnQiLCJleHAiOjE3Nzg2MTI4ODQsImlzcyI6IlByb2plY3RNYW5hZ2VtZW50QVBJIiwiYXVkIjoiUHJvamVjdE1hbmFnZW1lbnRBUEkifQ.V_nfTExwr-HSA855zyvo10XoYW75fp4JZAwkeEd1kEI"
 }
