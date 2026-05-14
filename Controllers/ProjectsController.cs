@@ -95,6 +95,7 @@ namespace ProjectManagementAPI.Controllers
             int id,
             UpdateProjectDto dto)
         {
+            
             var project = await _context.Projects.FindAsync(id);
 
             if (project == null)
@@ -160,9 +161,9 @@ namespace ProjectManagementAPI.Controllers
         [HttpPost("link/{projectId}/students")]
         public async Task<ActionResult> AddStudentToProject(int projectId, StudentProjectDTO dto)
         {
-            ActionResult result = null;
+            ActionResult result;
 
-            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             if (_projectService.ProjectExists(projectId))
             {
                 var project = await _context.Projects.FindAsync(projectId);
@@ -239,8 +240,8 @@ namespace ProjectManagementAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteStudentFromProject(int projectId, int studentId)
         {
-            ActionResult result = null;
-            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            ActionResult result;
+            int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             Project project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
 
             if (project != null)
