@@ -20,15 +20,12 @@ namespace ProjectManagementAPI.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly ApplicationContext _context;
-        private readonly PasswordService _passwordService;
-        private readonly IConfiguration _configuration;
+        private readonly UserService _userService;
 
-        public AuthController(ApplicationContext context, PasswordService passwordService, IConfiguration configuration)
+        public AuthController(UserService userService)
         {
-            _context = context;
-            _passwordService = passwordService;
-            _configuration = configuration;
+
+            _userService = userService;
         }
 
         [HttpPost("signup")]
@@ -39,156 +36,58 @@ namespace ProjectManagementAPI.Controllers
             String? occupationArea = json.TryGetProperty("occupationArea", out var occupationAreaProperty) ? occupationAreaProperty.GetString() : null;
             String? formationArea = json.TryGetProperty("formationArea", out var formationAreaProperty) ? formationAreaProperty.GetString() : null;
             String? educationalInstitution = json.TryGetProperty("educationalInstitution", out var educationalInstitutionProperty) ? educationalInstitutionProperty.GetString() : null;
-            String? hashedPassword = json.TryGetProperty("password", out var passwordProperty) ? (_passwordService.HashPassword(passwordProperty.GetString()!)) : null;
-
-            Student? existingStudent = await _context.Students
-                .FirstOrDefaultAsync(s => s.Email == email);
-
-            Teacher? existingTeacher = await _context.Teachers
-                .FirstOrDefaultAsync(t => t.Email == email);
+            String? password = json.TryGetProperty("password", out var passwordProperty) ? (passwordProperty.GetString()!) : null;
 
             ActionResult result;
-            if (existingStudent == null && existingTeacher == null)
+            
+            if (fullName != null && password != null && email != null && (educationalInstitution != null || (occupationArea != null && formationArea != null)))
             {
-                if (fullName != null && hashedPassword != null && email != null)
-                {
-                    if (educationalInstitution != null)
-                    {
-                        
-                        result = await RegisterStudent(fullName,email,hashedPassword,educationalInstitution);
-
-                    }
-                    else if (occupationArea != null && formationArea != null)
-                    {
-                        
-                        result = await RegisterTeacher(fullName, email, hashedPassword, occupationArea, formationArea);
-
-                    }
-                    else
-                    {
-                        result = BadRequest("Data necessary to register teacher or student is missing.");
-                    }
-
+                if(_userService.verifyEmailExists(email)) {
+                    result = BadRequest("Email already in use.");
                 }
                 else
                 {
-                    result = BadRequest("Invalid registration data.");
+                    User user = _userService.createUser(fullName, email, password, educationalInstitution, occupationArea, formationArea);
+                    result = Ok(user);
                 }
             }
             else
             {
-                result = BadRequest("Email already in use.");
+                result = BadRequest("Invalid registration data.");
             }
-
+        
             return result;
-            
-        }
-
-        public async Task<ActionResult> RegisterStudent(String fullName, String email, String hashedPassword, String educationalInstitution)
-        {
-            Student student = new()
-            {
-                FullName = fullName,
-                Email = email!,
-                HashedPassword = hashedPassword,
-                EducationalInstitution = educationalInstitution
-            };
-
-            _context.Students.Add(student);
-
-            await _context.SaveChangesAsync();
-
-            return Created();
-        }
-
-        public async Task<ActionResult> RegisterTeacher(String fullName, String email, String hashedPassword, String ocupationArea, String formationArea)
-        {
-
-            Teacher teacher = new()
-            {
-                FullName = fullName,
-                Email = email,
-                HashedPassword = hashedPassword,
-                OccupationArea = ocupationArea,
-                FormationArea = formationArea
-
-            };
-
-            _context.Teachers.Add(teacher);
-
-            await _context.SaveChangesAsync();
-
-            return Created();
         }
 
         [HttpPost("login")]
         public async Task<ActionResult> Login(LoginDto dto)
         {
-            ActionResult result = null;
+            ActionResult result = BadRequest("Email and password are required.");
 
-            var student = await _context.Students
-                .FirstOrDefaultAsync(s => s.Email == dto.Email);
-
-            var teacher = await _context.Teachers
-                    .FirstOrDefaultAsync(t => t.Email == dto.Email);
-
-            User? user = null;
-            string role = "";
-
-            if (student != null)
+            if (dto.Email != null && dto.Password != null)
             {
-                bool validPassword = _passwordService.VerifyPassword(dto.Password, student.HashedPassword);
+                string role = "";
+                User? user = _userService.login(dto.Email, dto.Password);
 
-                if (validPassword)
+                if(user == null)
+                {
+                    result = Unauthorized();
+                    
+                }
+                else if(user.GetType() == typeof(Teacher))
+                {
+                    role = "Teacher";
+                }
+                else
                 {
                     role = "Student";
-                    user = student;
                 }
-                else
-                    result = Unauthorized();
-            }
-            else if(teacher != null)
-            {
-                bool validPassword = _passwordService.VerifyPassword(dto.Password, teacher.HashedPassword);
 
-                if (validPassword) 
-                { 
-                    role = "Teacher";
-                    user = teacher;
+                if(role != "")
+                {
+                    JwtSecurityToken token = _userService.GenerateJwtToken(user, role);
+                    result = Ok(new{token = new JwtSecurityTokenHandler().WriteToken(token)});
                 }
-                else
-                    return Unauthorized();
-            }
-
-            if (user != null)
-            {
-                var claims = new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Email, dto.Email),
-                    new Claim(ClaimTypes.Role, role)
-                };
-
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
-
-                var creds = new SigningCredentials(key,SecurityAlgorithms.HmacSha256);
-
-                var token = new JwtSecurityToken(
-                    issuer: _configuration["Jwt:Issuer"],
-                    audience: _configuration["Jwt:Audience"],
-                    claims: claims,
-                    expires: DateTime.Now.AddHours(2),
-                    signingCredentials: creds
-                );
-
-                result = Ok(new
-                {
-                    token = new JwtSecurityTokenHandler().WriteToken(token)
-                });
-            }
-            else
-            {
-                result = Unauthorized();
             }
 
             return result;
