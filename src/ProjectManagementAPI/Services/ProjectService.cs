@@ -1,5 +1,3 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProjectManagementAPI.Data;
 using ProjectManagementAPI.DTOs;
@@ -15,41 +13,47 @@ namespace ProjectManagementAPI.Services
         public ProjectService(ApplicationContext context, UserService userService)
         {
             _context = context;
-            _userService = userService; 
+            _userService = userService;
         }
 
-        public async Task<ActionResult<IEnumerable<Project>>> GetAllProjects()
+        public async Task<List<Project>> GetAllProjects()
         {
-            return await _context.Projects.ToListAsync();
+            List<Project> result = await _context.Projects.ToListAsync();
+
+            return result;
         }
 
-        public async Task<ActionResult<DetailedProjectDTO>> GetDetailedProject(int id)
+        public async Task<DetailedProjectDTO?> GetDetailedProject(int id)
         {
-            ActionResult<DetailedProjectDTO> result = null;
+            DetailedProjectDTO? result = null;
             var project = await _context.Projects.FindAsync(id);
 
-            if(project != null) 
+            if (project != null)
             {
-                List<StudentProject> relations = _context.StudentProjects.Where(sp => sp.ProjectId == id).ToList();
+                var relations = await _context.StudentProjects
+                    .Where(sp => sp.ProjectId == id)
+                    .ToListAsync();
 
                 var students = new List<StudentDTO>();
-                foreach (var rel in relations)
+
+                foreach (var relation in relations)
                 {
-                    var s = _userService.GetStudentById(rel.StudentId);
-                    if (s != null)
+                    var student = _userService.GetStudentById(relation.StudentId);
+
+                    if (student != null)
                     {
                         students.Add(new StudentDTO
                         {
-                            Id = s.Id,
-                            FullName = s.FullName,
-                            Email = s.Email,
-                            EducationalInstitution = s.EducationalInstitution,
-                            Role = rel.Role
+                            Id = student.Id,
+                            FullName = student.FullName,
+                            Email = student.Email,
+                            EducationalInstitution = student.EducationalInstitution,
+                            Role = relation.Role
                         });
                     }
                 }
 
-                result = new DetailedProjectDTO()
+                result = new DetailedProjectDTO
                 {
                     id = project.Id,
                     name = project.Name,
@@ -57,78 +61,118 @@ namespace ProjectManagementAPI.Services
                     date = project.Date,
                     teacherId = project.TeacherId,
                     students = students
-
                 };
             }
+
             return result;
         }
 
         public async Task<Project> CreateProject(string name, string description, int teacherId)
         {
-            Project project = new Project()
+            Project result = new()
             {
                 Name = name,
                 Description = description,
                 TeacherId = teacherId,
                 Date = DateTime.Now
             };
-            _context.Projects.Add(project);
+
+            _context.Projects.Add(result);
             await _context.SaveChangesAsync();
-            return project;
+
+            return result;
         }
 
-        public async Task<ActionResult<Project>> DeleteProject(int projectId)
+        public async Task<Project?> UpdateProject(int projectId, string name, string description)
         {
-            Project project = GetProjectById(projectId).Result;
-            _context.Projects.Remove(project);
-            await _context.SaveChangesAsync();
-            return project;
+            Project? result = await GetProjectById(projectId);
+
+            if (result != null)
+            {
+                result.Name = name;
+                result.Description = description;
+
+                await _context.SaveChangesAsync();
+            }
+
+            return result;
+        }
+
+        public async Task<Project?> DeleteProject(int projectId)
+        {
+            Project? result = await GetProjectById(projectId);
+
+            if (result != null)
+            {
+                _context.Projects.Remove(result);
+                await _context.SaveChangesAsync();
+            }
+
+            return result;
         }
 
         public async Task<StudentProject> AddStudentToProject(int projectId, int studentId, string role)
         {
-            StudentProject relation = new StudentProject()
+            StudentProject result = new()
             {
                 ProjectId = projectId,
                 StudentId = studentId,
                 Role = role
             };
-            _context.StudentProjects.Add(relation);
+
+            _context.StudentProjects.Add(result);
             await _context.SaveChangesAsync();
-            return relation;
+
+            return result;
         }
 
-        public async Task<ActionResult<StudentProject>> DeleteStudentFromProject(int projectId, int studentId)
+        public async Task<StudentProject?> DeleteStudentFromProject(int projectId, int studentId)
         {
-            StudentProject relation = _context.StudentProjects.FirstOrDefault(sp => sp.ProjectId == projectId && sp.StudentId == studentId);
-            _context.StudentProjects.Remove(relation);
-            await _context.SaveChangesAsync();
-            return relation;
+            StudentProject? result = await _context.StudentProjects
+                .FirstOrDefaultAsync(sp => sp.ProjectId == projectId && sp.StudentId == studentId);
+
+            if (result != null)
+            {
+                _context.StudentProjects.Remove(result);
+                await _context.SaveChangesAsync();
+            }
+
+            return result;
         }
 
         public bool ProjectExists(int id)
         {
-            return _context.Projects.Any(e => e.Id == id);
+            bool result = _context.Projects.Any(e => e.Id == id);
+
+            return result;
         }
 
         public bool TeacherExists(int id)
         {
-            return _context.Teachers.Any(e => e.Id == id);
+            bool result = _context.Teachers.Any(e => e.Id == id);
+
+            return result;
         }
 
         public bool ProjectBelongsToTeacher(int projectId, int teacherId)
         {
-            return _context.Projects.Any(p => p.Id == projectId && p.TeacherId == teacherId);
+            bool result = _context.Projects.Any(p => p.Id == projectId && p.TeacherId == teacherId);
+
+            return result;
         }
 
-        public async Task<Project> GetProjectById(int id)
+        public async Task<Project?> GetProjectById(int id)
         {
-            return await _context.Projects.FindAsync(id);
+            Project? result = await _context.Projects.FindAsync(id);
+
+            return result;
         }
 
         public bool StudentBelongsToProject(int projectId, int studentId)
         {
-            return _context.StudentProjects.Any(sp => sp.ProjectId == projectId && sp.StudentId == studentId);
+            bool result = _context.StudentProjects.Any(sp => sp.ProjectId == projectId && sp.StudentId == studentId);
+
+            return result;
         }
     }
 }

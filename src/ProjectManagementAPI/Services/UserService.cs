@@ -25,21 +25,23 @@ namespace ProjectManagementAPI.Services
 
         public Student createStudent(string fullName, string email, string password, string educationalInstitution)
         {
-            Student student = new Student()
+            Student result = new Student()
             {
                 FullName = fullName,
                 Email = email,
                 HashedPassword = _passwordService.HashPassword(password),
                 EducationalInstitution = educationalInstitution
             };
-            _context.Students.Add(student);
+
+            _context.Students.Add(result);
             _context.SaveChanges();
-            return student;
+
+            return result;
         }
 
         public Teacher createTeacher(string fullName, string email, string password, string occupationArea, string formationArea)
         {
-            Teacher teacher = new Teacher()
+            Teacher result = new Teacher()
             {
                 FullName = fullName,
                 Email = email,
@@ -47,30 +49,38 @@ namespace ProjectManagementAPI.Services
                 OccupationArea = occupationArea,
                 FormationArea = formationArea
             };
-            _context.Teachers.Add(teacher);
+
+            _context.Teachers.Add(result);
             _context.SaveChanges();
-            return teacher;
+
+            return result;
         }
 
         public User createUser(string fullName, string email, string password, string? educationalInstitution = null, string? occupationArea = null, string? formationArea = null)
         {
+            User result;
+
             if (educationalInstitution != null)
             {
-                return createStudent(fullName, email, password, educationalInstitution);
+                result = createStudent(fullName, email, password, educationalInstitution);
             }
             else if (occupationArea != null && formationArea != null)
             {
-                return createTeacher(fullName, email, password, occupationArea, formationArea);
+                result = createTeacher(fullName, email, password, occupationArea, formationArea);
             }
             else
             {
                 throw new ArgumentException("Invalid user type");
             }
+
+            return result;
         }
 
         public bool verifyEmailExists(string email)
         {
-            return _context.Students.Any(s => s.Email == email) || _context.Teachers.Any(t => t.Email == email);
+            bool result = _context.Students.Any(s => s.Email == email) || _context.Teachers.Any(t => t.Email == email);
+
+            return result;
         }
 
         public User? login(string email, string password)
@@ -123,13 +133,16 @@ namespace ProjectManagementAPI.Services
 
         public bool UserExists(int id)
         {
-            return _context.Students.Any(s => s.Id == id) || _context.Teachers.Any(t => t.Id == id);
+            bool result = _context.Students.Any(s => s.Id == id) || _context.Teachers.Any(t => t.Id == id);
+
+            return result;
         }
 
         public Student? GetStudentById(int id)
         {
-            var student = _context.Students.FirstOrDefault(s => s.Id == id);
-            return student;
+            Student? result = _context.Students.FirstOrDefault(s => s.Id == id);
+
+            return result;
         }
     }
 }
