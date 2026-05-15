@@ -1,18 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ProjectManagementAPI.Data;
 using ProjectManagementAPI.DTOs;
 using ProjectManagementAPI.Models;
 using ProjectManagementAPI.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Threading.Tasks;
-
 
 namespace ProjectManagementAPI.Controllers
 {
@@ -29,40 +21,49 @@ namespace ProjectManagementAPI.Controllers
             _userService = userService;
         }
 
-
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Project>>> GetProjects()
         {
-            return await _projectService.GetAllProjects();
+            var projects = await _projectService.GetAllProjects();
+            ActionResult<IEnumerable<Project>> result = Ok(projects);
+
+            return result;
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<DetailedProjectDTO>> GetProject(int id)
         {
-            ActionResult<DetailedProjectDTO> result = NotFound();
+            ActionResult<DetailedProjectDTO> result;
+            var project = await _projectService.GetDetailedProject(id);
 
-            if (_projectService.ProjectExists(id))
+            if (project == null)
             {
-                ActionResult<DetailedProjectDTO> detailedProject = await _projectService.GetDetailedProject(id);
-
-                result = Ok(detailedProject);
+                result = NotFound();
             }
-
+            else
+            {
+                result = Ok(project);
+            }
 
             return result;
         }
 
         [Authorize(Roles = "Teacher")]
         [HttpPut("{id}")]
-        public async Task<ActionResult<DetailedProjectDTO>> PutProject(int id, UpdateProjectDto dto)
+        public async Task<IActionResult> PutProject(int id, UpdateProjectDto dto)
         {
-            ActionResult<DetailedProjectDTO> result = NotFound();
+            IActionResult result;
+            var project = await _projectService.UpdateProject(id, dto.Name, dto.Description);
 
-            ActionResult<DetailedProjectDTO> project = await _projectService.GetDetailedProject(id);
-            if (project != null)
+            if (project == null)
             {
-                result = Ok(project);
+                result = NotFound();
             }
+            else
+            {
+                result = NoContent();
+            }
+
             return result;
         }
 
@@ -70,10 +71,11 @@ namespace ProjectManagementAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<Project>> PostProject([FromBody] JsonElement json)
         {
-            ActionResult result;
-
+            ActionResult<Project> result;
             string? name = json.TryGetProperty("name", out var nameProperty) ? nameProperty.GetString() : null;
-            string? description = json.TryGetProperty("description", out var descriptionProperty) ? descriptionProperty.GetString() : null;
+            string? description = json.TryGetProperty("description", out var descriptionProperty)
+                ? descriptionProperty.GetString()
+                : null;
 
             if (name == null || description == null)
             {
@@ -81,9 +83,8 @@ namespace ProjectManagementAPI.Controllers
             }
             else
             {
-                int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-                Project project =await  _projectService.CreateProject(name,description, teacherId);
+                int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                Project project = await _projectService.CreateProject(name, description, teacherId);
                 result = Ok(project);
             }
 
@@ -94,24 +95,27 @@ namespace ProjectManagementAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(int id)
         {
-            ActionResult result = NotFound();
-            
+            IActionResult result;
 
-            if (_projectService.ProjectExists(id))
+            if (!_projectService.ProjectExists(id))
             {
-                int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+                result = NotFound();
+            }
+            else
+            {
+                int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-                if (_projectService.ProjectBelongsToTeacher(id, teacherId))
+                if (!_projectService.ProjectBelongsToTeacher(id, teacherId))
                 {
-                    ActionResult<Project> project = await _projectService.DeleteProject(id);
-                    result = Ok(project);
+                    result = Forbid();
                 }
                 else
                 {
-                    result = Forbid("Teacher not in charge of project");
+                    var project = await _projectService.DeleteProject(id);
+                    result = Ok(project);
                 }
             }
-            
+
             return result;
         }
 
@@ -120,18 +124,17 @@ namespace ProjectManagementAPI.Controllers
         public async Task<ActionResult> AddStudentToProject(int projectId, StudentProjectDTO dto)
         {
             ActionResult result;
-
             int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
             if (!_projectService.ProjectExists(projectId))
             {
                 result = NotFound("Project not found");
             }
-            else if (_projectService.ProjectBelongsToTeacher(projectId, teacherId) == false)
+            else if (!_projectService.ProjectBelongsToTeacher(projectId, teacherId))
             {
-                result = Forbid("Teacher not in charge of project");
-            } 
-            else if (_userService.UserExists(dto.StudentId) == false)
+                result = Forbid();
+            }
+            else if (!_userService.UserExists(dto.StudentId))
             {
                 result = NotFound("Student not found");
             }
@@ -142,10 +145,9 @@ namespace ProjectManagementAPI.Controllers
             else
             {
                 var relation = await _projectService.AddStudentToProject(projectId, dto.StudentId, dto.Role);
-
                 result = Ok(relation);
             }
-            
+
             return result;
         }
 
@@ -153,20 +155,20 @@ namespace ProjectManagementAPI.Controllers
         [HttpDelete("{projectId}/unlink/{studentId}")]
         public async Task<ActionResult> DeleteStudentFromProject(int projectId, int studentId)
         {
-            ActionResult result ;
+            ActionResult result;
             int teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            if (_projectService.ProjectExists(projectId) == false)
+            if (!_projectService.ProjectExists(projectId))
             {
                 result = NotFound("Project not found");
             }
-            else if (_userService.UserExists(studentId) == false)
+            else if (!_userService.UserExists(studentId))
             {
                 result = NotFound("Student not found");
             }
             else if (!_projectService.ProjectBelongsToTeacher(projectId, teacherId))
             {
-                result = Forbid("Teacher not in charge of project");
+                result = Forbid();
             }
             else if (!_projectService.StudentBelongsToProject(projectId, studentId))
             {
@@ -177,7 +179,7 @@ namespace ProjectManagementAPI.Controllers
                 var relation = await _projectService.DeleteStudentFromProject(projectId, studentId);
                 result = Ok(relation);
             }
-            
+
             return result;
         }
     }

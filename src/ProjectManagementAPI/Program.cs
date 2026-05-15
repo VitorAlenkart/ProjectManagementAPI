@@ -11,10 +11,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<ProjectService>();
 builder.Services.AddScoped<UserService>();
-builder.Services.AddDbContext<ApplicationContext>(opt =>
+
+if (!builder.Environment.IsEnvironment("Testing"))
 {
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
-});
+    builder.Services.AddDbContext<ApplicationContext>(opt =>
+    {
+        opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    });
+}
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -53,3 +57,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program
+{
+}
